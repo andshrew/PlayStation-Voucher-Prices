@@ -1,0 +1,42 @@
+[
+    {
+        "id": 0,
+        "name": "PlayStation Network \u00a350.00 Voucher",
+        "url": "https://raw.githubusercontent.com/andshrew/PlayStation-Voucher-Prices/main/example/psn-50-voucher.html",
+        "rrp": 50.0,
+        "price": -1,
+        "saving": 0,
+        "savingGold": 0,
+        "error": 0
+    },
+    {
+        "id": 1,
+        "name": "PlayStation Network \u00a340.00 Voucher",
+        "url": "https://raw.githubusercontent.com/andshrew/PlayStation-Voucher-Prices/main/example/psn-40-voucher.html",
+        "rrp": 40.0,
+        "price": 40.0,
+        "saving": 0,
+        "savingGold": 0,
+        "error": 0
+    },
+    {
+        "id": 2,
+        "name": "PlayStation Network \u00a325.00 Voucher",
+        "url": "https://raw.githubusercontent.com/andshrew/PlayStation-Voucher-Prices/main/example/psn-25-voucher.html",
+        "rrp": 25.0,
+        "price": 20.0,
+        "saving": 0,
+        "savingGold": 0,
+        "error": 0
+    },
+    {
+        "id": 3,
+        "name": "PlayStation Network \u00a315.00 Voucher",
+        "url": "https://raw.githubusercontent.com/andshrew/PlayStation-Voucher-Prices/main/example/psn-example-error-voucher.html",
+        "rrp": 15.0,
+        "price": 15.0,
+        "saving": 0,
+        "savingGold": 0,
+        "error": 12
+    }
+]
