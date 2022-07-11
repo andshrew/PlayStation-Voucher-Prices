@@ -191,7 +191,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
                 changed_data = True
                 print(f'A new challenger! {product["name"]} has been added at £{price:0.2f}')
                 product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
                 discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 15844367
                 product["price"] = price
@@ -200,7 +200,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
                 changed_data = True
                 print(f'Yaaay! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
                 product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
                 discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 3066993
                 product["price"] = price
@@ -209,7 +209,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
                 changed_data = True
                 print(f'Boooo! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
                 product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
                 discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s still a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 10038562
                 product["price"] = price
