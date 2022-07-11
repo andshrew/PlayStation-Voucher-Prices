@@ -75,9 +75,9 @@ The data included in `example\data.json` will demonstrate a new product, a produ
 ```
 (.venv) andshrew@UBUNTU:~/git/PlayStation-Voucher-Prices$ python app.py check_psn_vouchers
 A new challenger! PlayStation Network £50.00 Voucher has been added at £44.85
-Yaaay! PlayStation Network £40.00 Voucher was £40.0 now £35.85
-Boooo! PlayStation Network £25.00 Voucher was £20.0 now £22.85
-[check_psn_vouchers] error limit reached for product for id 2: it will remain disabled until the error count is manually reset
+Yaaay! PlayStation Network £40.00 Voucher was £40.00 now £35.85
+Boooo! PlayStation Network £25.00 Voucher was £20.00 now £22.85
+[check_psn_vouchers] error limit reached for product for id 3: it will remain disabled until the error count is manually reset
 ```
 
 These Discord notifications will be be sent (if you have configured webhook URLs):
