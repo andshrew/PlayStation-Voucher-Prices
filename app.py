@@ -189,34 +189,34 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             if product["price"] == -1:
                 # New product (existing price is -1)
                 changed_data = True
-                print(f'A new challenger! {product["name"]} has been added at £{price}')
-                product["saving"] = int((product["rrp"] - price) / product["rrp"] * 100)
-                product["savingGold"] = int((product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount)
-                discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price}\n\nThat\'s a {product["saving"]}% saving on RRP ({product["savingGold"]}% with 🥇)'
+                print(f'A new challenger! {product["name"]} has been added at £{price:0.2f}')
+                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
+                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 15844367
                 product["price"] = price
             elif price < product["price"]:
                 # Yay cheaper
                 changed_data = True
-                print(f'Yaaay! {product["name"]} was £{product["price"]} now £{price}')
-                product["saving"] = int((product["rrp"] - price) / product["rrp"] * 100)
-                product["savingGold"] = int((product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount)
-                discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]} now £{price}\n\nThat\'s a {product["saving"]}% saving on RRP ({product["savingGold"]}% with 🥇)'
+                print(f'Yaaay! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
+                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
+                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 3066993
                 product["price"] = price
             elif price > product["price"]:
                 # Boo more expensive
                 changed_data = True
-                print(f'Boooo! {product["name"]} was £{product["price"]} now £{price}')
-                product["saving"] = int((product["rrp"] - price) / product["rrp"] * 100)
-                product["savingGold"] = int((product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount)
-                discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]} now £{price}\n\nThat\'s still a {product["saving"]}% saving on RRP ({product["savingGold"]}% with 🥇)'
+                print(f'Boooo! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
+                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
+                product["savingGold"] = (product["rrp"] - price) / product["rrp"] * 100 + loyalty_discount
+                discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s still a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 10038562
                 product["price"] = price
             else:
                 # Meh no change
                 discord_message_embed = None
-                print(f'{product["name"]} price unchanged (£{product["price"]} now £{price})')
+                print(f'{product["name"]} price unchanged (£{product["price"]:0.2f} now £{price:0.2f})')
 
             if discord_message_embed:
                 discord_message = {
@@ -226,10 +226,10 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
                 discord.send_discord_message(message=discord_message, webhook_url=webhook_url)
 
     # If any of the product data has changed calculate what the new best value product is, and
-    # send a Discord message
+    # send a Discord message. Display the top 5 vouchers (exclude any with errors or invalid price)
     if changed_data:
-        best_value = sorted(product_data, key=lambda d: d["saving"], reverse=True)[0]
-        best_value_list = list(filter(lambda d: d["saving"] == best_value["saving"], product_data))
+        best_value = sorted(product_data, key=lambda d: d["saving"], reverse=True)[:5]
+        best_value_list = list(filter(lambda d: d["error"] == 0 and d["price"] >= 0, best_value))
         if len(best_value_list) > 1:
             best_value_message = f'**Current Best Value Vouchers**'
         else:
@@ -237,7 +237,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
 
         for item in best_value_list:
             best_value_message += f'\n'
-            best_value_message += f'[{item["name"]}]({item["url"]})\t{item["saving"]}% (or {item["savingGold"]}% with 🥇)'
+            best_value_message += f'[{item["name"]}]({item["url"]})\t{item["saving"]:0.1f}% (or {item["savingGold"]:0.1f}% with 🥇)'
 
         discord_message_embed = None
         discord_message = None
