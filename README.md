@@ -23,6 +23,23 @@ Within [`data.json`](example/data.json):
 
 # Running this example
 
+## Visual Studio Code Remote - Containers
+
+This repository contains [configuration](.devcontainer/devcontainer.json) for taking advantage of [Visual Studio Code's development container integration](https://code.visualstudio.com/docs/remote/containers), which tells it how to build a Python equiped Docker container suitable for using this example without having to install Python or it's dependencies on your host computer. This is built from a [Microsoft example](https://github.com/microsoft/vscode-remote-try-python).
+
+**1. Follow [these steps to configure Visual Studio Code](https://code.visualstudio.com/docs/remote/containers#_getting-started)**
+
+**2. Open this respository in Visual Studio Code**
+
+You should be prompted that the folder contains a Dev Container configuration. Click **Reopen in Container**.
+![Visual Studio Code Dev Container notification example](docs/images/Readme-Container-Prompt.png)
+
+**3. Continue from [Step 8 of the Manual Configuration](#manual-execute-the-program)**
+
+> ℹ️ **Info** <br>While running inside the Dev Container the prompt will not display `(.venv)` (as shown in the examples) as the virtual environment is not required when working inside the container.
+
+## Manual Configuration - Ubuntu
+
 These are instructions for running this example on Ubuntu ([Windows users should take advantage of WSL/WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)).
 
 **1. Install Python 3.8**
@@ -67,6 +84,7 @@ nano config.json
 ```
 
 **8. Execute the program**
+<a id="manual-execute-the-program"></a>
 ```
 python app.py check_psn_vouchers
 ```
