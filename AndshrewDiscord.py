@@ -21,13 +21,13 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #   SOFTWARE.
 
-import json
-import requests
 import datetime
 import random
 import pathlib
+import json
+import requests
 
-discord_queue_path='discord'
+DISCORD_QUEUE_PATH='discord'
 
 def send_discord_message(message, webhook_url, queue_message=False):
 
@@ -35,12 +35,13 @@ def send_discord_message(message, webhook_url, queue_message=False):
         return True
     try:
         message_json = json.dumps(message)
-        result = requests.post(webhook_url, data=message_json, headers= {"Content-Type": "application/json; charset=utf-8"})
+        result = requests.post(webhook_url, data=message_json,
+                               headers={"Content-Type": "application/json; charset=utf-8"})
 
-    except TypeError as e:
-        print(f'[send_discord_message] error: {e.args}')
-    except requests.exceptions.RequestException as e:
-        print(f'[send_discord_message] requests protocol error: {e.args}')
+    except TypeError as ex:
+        print(f'[send_discord_message] error: {ex.args}')
+    except requests.exceptions.RequestException as ex:
+        print(f'[send_discord_message] requests protocol error: {ex.args}')
 
     if not result.status_code // 100 == 2:
         print(f'[send_discord_message] requests HTTP error: {result.status_code}')
@@ -52,32 +53,33 @@ def send_discord_message(message, webhook_url, queue_message=False):
 def save_discord_message(message, webhook_url):
     # This message has failed to send so try and save it to the Discord message queue
     try:
-        discord_filename = pathlib.Path(discord_queue_path).joinpath(f'{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H.%M.%f%Z")}-{random.randint(1000,50000)}-vouchers.json')
-        pathlib.Path(discord_queue_path).mkdir(parents=True, exist_ok=True)
+        discord_filename = pathlib.Path(DISCORD_QUEUE_PATH).joinpath(f'{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H.%M.%f%Z")}-{random.randint(1000,50000)}-vouchers.json')
+        pathlib.Path(DISCORD_QUEUE_PATH).mkdir(parents=True, exist_ok=True)
 
         # Add a timestamp to the message embed
         for e in message["embeds"]:
             e["timestamp"] = f'{datetime.datetime.utcnow().isoformat()}'
-        
-        # Save the webhook_url in the message (this must be removed before trying to send the message again)
+
+        # Save the webhook_url in the message
+        # (this must be removed before trying to send the message again)
         message["webhook_url"] = webhook_url
 
         # Save the message to a file in JSON format
-        with open(discord_filename, "w") as f:
+        with open(discord_filename, "w", encoding="utf-8") as f:
             json.dump(message, f, indent=4)
-    except Exception as e:
-        print(f'[send_discord_message] Error saving Discord message to queue: {e.args}')
+    except Exception as ex:
+        print(f'[send_discord_message] Error saving Discord message to queue: {ex.args}')
 
 def send_discord_queue():
-    # Process all *.json files in the discord_queue_path and attempt to send them to the
+    # Process all *.json files in the DISCORD_QUEUE_PATH and attempt to send them to the
     # webhook_url which has been saved within them
     try:
-        files = list(pathlib.Path(discord_queue_path).glob('*.json'))
-    except:
+        files = list(pathlib.Path(DISCORD_QUEUE_PATH).glob('*.json'))
+    except Exception:
         pass
 
     for file in files:
-        with open(file.absolute()) as f:
+        with open(file.absolute(), encoding="utf-8") as f:
             message = json.load(f)
         
         webhook_url = message["webhook_url"]
@@ -86,8 +88,8 @@ def send_discord_queue():
         if send_discord_message(message=message, webhook_url=webhook_url, queue_message=True):
             try:
                 file.unlink()
-            except Exception as e:
-                print(f'[send_discord_queue] Unable to delete {file.absolute()}: {e.args}')
+            except Exception as ex:
+                print(f'[send_discord_queue] Unable to delete {file.absolute()}: {ex.args}')
 
 if __name__ == "__main__":
     print('https://github.com/andshrew/PlayStation-Voucher-Prices')
