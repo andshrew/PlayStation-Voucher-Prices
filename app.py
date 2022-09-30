@@ -119,6 +119,9 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
                    ' {req.status_code}')
             continue
 
+        # Reset variables to prevent unintended re-use
+        productName = basePrice = img_src = img_encoded = img_decoded = None
+
         # Parse the content in the response to this request to find the information that
         # we're interested in capturing
         soup = BeautifulSoup(req.content, 'html.parser')
@@ -141,6 +144,11 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             if img_src.startswith('data:image/png;base64,'):
                 img_encoded = img_src.replace('data:image/png;base64,', '')
 
+        # Check an image has been found
+        if img_encoded == None:
+            print(f'[check_psn_vouchers] no price image in request for id {product["id"]}')
+            continue
+        
         # Decode the image from the base64 string
         img_decoded = base64.b64decode(img_encoded)
 
