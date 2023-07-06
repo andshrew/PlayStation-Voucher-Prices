@@ -1,6 +1,6 @@
 #   MIT License
 
-#   Copyright (c) 2022 andshrew
+#   Copyright (c) 2022-2023 andshrew
 #   https://github.com/andshrew/PlayStation-Voucher-Prices
 
 #   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -67,6 +67,8 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
     except OSError as ex:
         print(f'[check_psn_vouchers] Error accessing data.json: {ex.strerror}')
         return False
+    
+    product_data = product_data_migration(product_data)
 
     changed_data = False
 
@@ -148,104 +150,98 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
         if img_encoded == None:
             print(f'[check_psn_vouchers] no price image in request for id {product["id"]}')
             continue
-        
-        # Decode the image from the base64 string
-        img_decoded = base64.b64decode(img_encoded)
 
-        # While pytesseract can process this image directly we can use CV2 to do some additional
-        # processing on the image which will make it more suitable for OCR (ie. increase accuracy)
-        img_numpy = numpy.frombuffer(img_decoded, dtype=numpy.uint8)
-        img = cv2.imdecode(img_numpy, cv2.IMREAD_COLOR)
+        # Get price from image
+        price_base = parse_base64_image_price(img_base64=img_encoded, transparent=True)
 
-        # The processing applied here is based on this stackoverflow answer:
-        # https://stackoverflow.com/a/58032585
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # The Otsu method will automatically find best threshold value
-        _, binary_image = cv2.threshold(img_gray, 0, 255, cv2.THRESH_OTSU)
-
-        # Invert the image if the text is white and background is black
-        count_white = numpy.sum(binary_image > 0)
-        count_black = numpy.sum(binary_image == 0)
-        if count_black > count_white:
-            binary_image = 255 - binary_image
-
-        # Add padding to the image
-        final_image = cv2.copyMakeBorder(img, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(255, 255, 255))
-        img = final_image
-
-        # OCR the image with pytesseract
-        # A character whitelist can be used to potentially increase the accuracy
-        custom_oem_psm_config = r'-c tessedit_char_whitelist=£.0123456789 --psm 7'
-        try:
-            price = pytesseract.image_to_string(img, config=custom_oem_psm_config)
-        except Exception as ex:
-            print(f'[check_psn_vouchers] pytesseract error for id {product["id"]}: {ex.args}')
+        if price_base == None:
+            print(f'[check_psn_vouchers] unable to OCR price image in request for id {product["id"]}')
             continue
 
-        # Check if the price has been found
-        # If it has changed from before then send a Discord message and update the product data
-        if price:
-            price = price.strip()
-            try: 
-                price = float(price.replace('£',''))
-            except Exception as ex:
-                print(f'[check_psn_vouchers] Unable to convert price to float for id {product["id"]}')
-                continue
+        # Get the member price (an image delivered as a base64 encoded string)
+        img_src = img_encoded = price_member = None
 
-            # Additional customer loyality discount (%)
-            loyalty_discount = 2
+        try:
+            for item in soup.find("div", class_="membership_infowrapper").find("div", id="gold").find_all("div", class_="reward_value",
+                                limit=1):
+                img_src = item.find('img')['src']
+                if img_src.startswith('data:image/png;base64,'):
+                    img_encoded = img_src.replace('data:image/png;base64,', '')
+        except Exception as ex:
+            print(f'[check_psn_vouchers] no member price image in request for id {product["id"]}')
+            continue
 
-            # Reset the error counter for this product
-            product["error"] = 0
+        # Check an image has been found
+        if img_encoded == None:
+            print(f'[check_psn_vouchers] no member price image in request for id {product["id"]}')
+            continue
 
-            discord_message_embed = {
-                'title': f'{product["name"]}',
-                'url': f'{product["url"]}'
-            }
+        # Get member price from image
+        price_member = parse_base64_image_price(img_base64=img_encoded, transparent=True)
 
+        if price_member == None:
+            print(f'[check_psn_vouchers] unable to OCR members price image in request for id {product["id"]}')
+            continue
+
+        # Check if the price has changed from before then send a Discord message and update the product data
+
+        # Additional customer loyality discount (%)
+        loyalty_discount = 2
+
+        # Reset the error counter for this product
+        product["error"] = 0
+
+        discord_message_embed = {
+            'title': f'{product["name"]}',
+            'url': f'{product["url"]}'
+        }
+
+        current_product = product.copy()
+        current_product["price"] = price_base
+        current_product["priceGold"] = price_member
+        current_product["saving"] = (current_product["rrp"] - price_base) / product["rrp"] * 100
+        current_product["savingGold"] = (current_product["rrp"] - price_member) / product["rrp"] * 100
+
+        if current_product == product:
+            # No Change
+            discord_message_embed = None
+            print(f'{product["name"]} price unchanged (£{product["price"]:0.2f} now £{price_base:0.2f})')
+
+        if current_product != product:
+            # Change
+            changed_data = True
             if product["price"] == -1:
                 # New product (existing price is -1)
-                changed_data = True
-                print(f'A new challenger! {product["name"]} has been added at £{price:0.2f}')
-                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
-                discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
+                print(f'A new challenger! {product["name"]} has been added at £{price_base:0.2f}. Member price £{price_member:0.2f}')
+                discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 15844367
-                product["price"] = price
-            elif price < product["price"]:
+            elif price_base < product["price"] or price_member < product["priceGold"]:
                 # Yay cheaper
-                changed_data = True
-                print(f'Yaaay! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
-                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
-                discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
+                print(f'Yaaay! {product["name"]} was £{product["price"]:0.2f} now £{price_base:0.2f}. Member price was £{product["priceGold"]:0.2f} now £{price_member:0.2f}.')
+                discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 3066993
-                product["price"] = price
-            elif price > product["price"]:
+            elif price_base > product["price"] or price_member > product["priceGold"]:
                 # Boo more expensive
-                changed_data = True
-                print(f'Boooo! {product["name"]} was £{product["price"]:0.2f} now £{price:0.2f}')
-                product["saving"] = (product["rrp"] - price) / product["rrp"] * 100
-                product["savingGold"] = (product["rrp"] - (price * (100 - loyalty_discount) / 100)) / product["rrp"] * 100
-                discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price:0.2f}\n\nThat\'s still a {product["saving"]:0.1f}% saving on RRP ({product["savingGold"]:0.1f}% with 🥇)'
+                print(f'Boooo! {product["name"]} was £{product["price"]:0.2f} now £{price_base:0.2f}. Member price was £{product["priceGold"]:0.2f} now £{price_member:0.2f}.')
+                discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s still a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
                 discord_message_embed["color"] = 10038562
-                product["price"] = price
-            else:
-                # Meh no change
-                discord_message_embed = None
-                print(f'{product["name"]} price unchanged (£{product["price"]:0.2f} now £{price:0.2f})')
+            
+            product["price"] = current_product["price"]
+            product["priceGold"] = current_product["priceGold"]
+            product["saving"] = current_product["saving"]
+            product["savingGold"] = current_product["savingGold"]
 
-            if discord_message_embed:
-                discord_message = {
-                    #'content': "Hello there",
-                    'embeds': [ discord_message_embed ]
-                }
-                discord.send_discord_message(message=discord_message, webhook_url=webhook_url)
+        if discord_message_embed:
+            discord_message = {
+                #'content': "Hello there",
+                'embeds': [ discord_message_embed ]
+            }
+            discord.send_discord_message(message=discord_message, webhook_url=webhook_url)
 
     # If any of the product data has changed calculate what the new best value product is, and
     # send a Discord message. Display the top 5 vouchers (exclude any with errors or invalid price)
     if changed_data:
-        best_value = sorted(product_data, key=lambda d: d["saving"], reverse=True)[:5]
+        best_value = sorted(product_data, key=lambda d: d["savingGold"], reverse=True)[:5]
         best_value_list = list(filter(lambda d: d["error"] == 0 and d["price"] >= 0, best_value))
         if len(best_value_list) > 1:
             best_value_message = '**Current Best Value Vouchers**'
@@ -254,7 +250,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
 
         for item in best_value_list:
             best_value_message += '\n'
-            best_value_message += f'[{item["name"]}]({item["url"]})\t{item["saving"]:0.1f}% (or {item["savingGold"]:0.1f}% with 🥇)'
+            best_value_message += f'[{item["name"]}]({item["url"]})\t{item["saving"]:0.1f}% (or {item["savingGold"]:0.1f}% with 🥇)\n£{item["price"]:0.2f} (or £{item["priceGold"]:0.2f} with gold)\n'
 
         discord_message_embed = None
         discord_message = None
@@ -276,6 +272,70 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
     except OSError as ex:
         print(f'[check_psn_vouchers] Error saving data.json: {ex.strerror}')
         return False
+
+def parse_base64_image_price(img_base64, transparent=False):
+    
+    # Decode the image from the base64 string
+    img_decoded = base64.b64decode(img_base64)
+
+    # While pytesseract can process this image directly we can use CV2 to do some additional
+    # processing on the image which will make it more suitable for OCR (ie. increase accuracy)
+    img_numpy = numpy.frombuffer(img_decoded, dtype=numpy.uint8)
+
+    if transparent:
+        img = cv2.imdecode(img_numpy, cv2.IMREAD_UNCHANGED)
+        if img.shape[2] != 4:
+            print(f'[parse_base64_image_price] transparent is set but image has no alpha channel')
+
+        # Set all RGB values to black without altering alpha (transparency) channel
+        img[:,:,:3] = [0, 0, 0]
+
+    if transparent == False:    
+        img = cv2.imdecode(img_numpy, cv2.IMREAD_COLOR)
+
+        # TODO
+        # Is this actually doing anything?
+
+        # The processing applied here is based on this stackoverflow answer:
+        # https://stackoverflow.com/a/58032585
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # The Otsu method will automatically find best threshold value
+        _, binary_image = cv2.threshold(img_gray, 0, 255, cv2.THRESH_OTSU)
+
+        # Invert the image if the text is white and background is black
+        count_white = numpy.sum(binary_image > 0)
+        count_black = numpy.sum(binary_image == 0)
+        if count_black > count_white:
+            binary_image = 255 - binary_image
+
+    # Add padding to the image
+    final_image = cv2.copyMakeBorder(img, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    img = final_image
+
+    # OCR the image with pytesseract
+    # A character whitelist can be used to potentially increase the accuracy
+    custom_oem_psm_config = r'-c tessedit_char_whitelist=£.0123456789 --psm 7'
+    try:
+        price = pytesseract.image_to_string(img, config=custom_oem_psm_config)
+    except Exception as ex:
+        print(f'[parse_base64_image_price] pytesseract parsing error: {ex.args}')
+        return None
+
+    if price:
+        price = price.strip()
+        try: 
+            price = float(price.replace('£',''))
+        except Exception as ex:
+            print(f'[parse_base64_image_price] Unable to convert price to float')
+            return None
+
+    return price
+
+def product_data_migration(product_data):
+    for product in product_data:
+        if "priceGold" not in product:
+            product["priceGold"] = product["price"]
+    return product_data
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
