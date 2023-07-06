@@ -21,6 +21,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #   SOFTWARE.
 
+import argparse
 import base64
 import cv2
 import json
@@ -34,6 +35,8 @@ import sys
 
 from bs4 import BeautifulSoup
 import AndshrewDiscord as discord
+
+GITHUB_URL = 'https://github.com/andshrew/PlayStation-Voucher-Prices'
 
 def init_logging(debug_mode=False, disable_log_to_file=False):
     log_format_stdout = '[%(asctime)s]%(levelname)s: %(message)s'
@@ -379,19 +382,26 @@ def product_data_migration(product_data):
 
 if __name__ == "__main__":
 
-    init_logging()
+    args_parser = argparse.ArgumentParser(description='PSN Voucher Price Checker', usage='python app.py --check_psn_vouchers',
+                                          epilog=GITHUB_URL)
+    args_parser.formatter_class = argparse.RawDescriptionHelpFormatter
+    args_parser.add_argument("--check_psn_vouchers", action='store_true', help="check PSN voucher prices", default=False)
+    args_parser.add_argument("--send_discord_queue", action='store_true', help="send queued Discord messages", default=False)
+    args_parser.add_argument("-d", "--debug", action='store_true', help="enable debug logging", default=False)
+    args_parser.add_argument("--no-log-file", action='store_true', help="disable logging to file", default=False)
+    args = args_parser.parse_args()
 
-    if len(sys.argv) != 2:
-        print('https://github.com/andshrew/PlayStation-Voucher-Prices')
-        print('')
-        print('Usage:')
-        print('python app.py check_psn_vouchers')
-        print('python app.py send_discord_queue')
-    else:
-        for a in sys.argv:
-            if a == "check_psn_vouchers":
-                check_psn_vouchers()
-                sys.exit()
-            if a == "send_discord_queue":
-                discord.send_discord_queue()
-                sys.exit()
+    init_logging(args.debug, args.no_log_file)
+    logging.debug('Executing with the following args...')
+    logging.debug(args)
+
+    if args.check_psn_vouchers:
+        check_psn_vouchers()
+        sys.exit()
+
+    if args.send_discord_queue:
+        discord.send_discord_queue()
+        sys.exit()
+
+    args_parser.print_help()
+    sys.exit()
