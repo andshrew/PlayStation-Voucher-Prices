@@ -290,8 +290,8 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
     # If any of the product data has changed calculate what the new best value product is, and
     # send a Discord message. Display the top 5 vouchers (exclude any with errors or invalid price)
     if changed_data:
-        best_value = sorted(product_data, key=lambda d: d["savingGold"], reverse=True)[:5]
-        best_value_list = list(filter(lambda d: d["error"] == 0 and d["price"] >= 0, best_value))
+        best_value = sorted(product_data, key=lambda d: d["savingGold"], reverse=True)
+        best_value_list = list(filter(lambda d: d["error"] == 0 and d["price"] >= 0, best_value))[:5]
         if len(best_value_list) > 1:
             best_value_message = '**Current Best Value Vouchers**'
         else:
