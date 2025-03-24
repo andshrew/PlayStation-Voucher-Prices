@@ -201,7 +201,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             logging.error(f'Unable to OCR price image in response for id {product["id"]}')
             continue
 
-        # Get the member price (an image delivered as a base64 encoded string)
+        # Get the member price (a regular string)
         img_src = img_encoded = price_member = None
 
         # Check if member pricing is available
@@ -211,25 +211,12 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             price_member = price_base
         else:
             try:
-                for item in soup.find("div", class_="membership_infowrapper").find("div", id="gold").find_all("div", class_="reward_value",
-                                    limit=1):
-                    img_src = item.find('img')['src']
-                    if img_src.startswith('data:image/png;base64,'):
-                        img_encoded = img_src.replace('data:image/png;base64,', '')
+                price_member = soup.find("div", class_="recommended-item-memb-prices") \
+                                .find("img", {"src" : lambda x: x.endswith('gold.png')}) \
+                                .string.strip()
+                price_member = float(price_member.replace('£',''))
             except Exception as ex:
                 logging.error(f'Member price not in expected location for id {product["id"]}')
-                continue
-
-            # Check an image has been found
-            if img_encoded == None:
-                logging.error(f'No member price image in response for id {product["id"]}')
-                continue
-
-            # Get member price from image
-            price_member = parse_base64_image_price(img_base64=img_encoded, transparent=True)
-
-            if price_member == None:
-                logging.error(f'Unable to OCR member price image in response for id {product["id"]}')
                 continue
 
         # Check if the price has changed from before then send a Discord message and update the product data
