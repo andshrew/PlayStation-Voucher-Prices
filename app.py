@@ -34,7 +34,8 @@ import requests
 import sys
 
 from bs4 import BeautifulSoup
-import AndshrewDiscord as discord
+from discord_andshrew import message as discord
+from discord_andshrew import queue as discord_queue
 
 GITHUB_URL = 'https://github.com/andshrew/PlayStation-Voucher-Prices'
 
@@ -129,18 +130,17 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             # It should be disabled for future runs
             product["error"] = -1
             # And a Discord notification should be sent
-            discord_message_embed = {
-                'title': f'{product["name"]} Error Limit 😨',
-                'description': f'"{product["name"]}" (id: {product["id"]}) has reached the'
-                                ' error limit. Check URLs etc.',
-                'color': 10038562
-            }
-            discord_message = {
-                'embeds': [ discord_message_embed ]
-            }
+            discord_message_embed = discord.DiscordMessageEmbed(
+                title = f'{product["name"]} Error Limit 😨',
+                message = f'"{product["name"]}" (id: {product["id"]}) has'
+                           ' reached the error limit. Check URLs etc.',
+                colour = 10038562
+            )
+            discord_message = discord.DiscordMessage(webhook_url=webhook_error_url)
+            discord_message.add_embed(discord_message_embed.get_embed())
             print(f'[check_psn_vouchers] error limit reached for product for id {product["id"]}:'
                    ' it will remain disabled until the error count is manually reset')
-            discord.send_discord_message(message=discord_message, webhook_url=webhook_error_url)
+            discord_message.send_message()
             continue
 
         # There are a number of instances that will be considered failures in the following steps
@@ -227,10 +227,10 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
         # Reset the error counter for this product
         product["error"] = 0
 
-        discord_message_embed = {
-            'title': f'{product["name"]}',
-            'url': f'{product["url"]}'
-        }
+        discord_message_embed = discord.DiscordMessageEmbed(
+            title = f'{product["name"]}',
+            url = f'{product["url"]}'
+        )
 
         current_product = product.copy()
         current_product["price"] = price_base
@@ -249,18 +249,18 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             if product["price"] == -1:
                 # New product (existing price is -1)
                 logging.info(f'A new challenger! {product["name"]} has been added at £{price_base:0.2f}. Member price £{price_member:0.2f}')
-                discord_message_embed["description"] = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
-                discord_message_embed["color"] = 15844367
+                discord_message_embed.description = f'🎉 A new challenger has appeared!\n\nIt\'s been listed at £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
+                discord_message_embed.color = 15844367
             elif price_base < product["price"] or price_member < product["priceGold"]:
                 # Yay cheaper
                 logging.info(f'Yaaay! {product["name"]} was £{product["price"]:0.2f} now £{price_base:0.2f}. Member price was £{product["priceGold"]:0.2f} now £{price_member:0.2f}.')
-                discord_message_embed["description"] = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
-                discord_message_embed["color"] = 3066993
+                discord_message_embed.description = f'✅ Yaaay, price drop!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
+                discord_message_embed.color = 3066993
             elif price_base > product["price"] or price_member > product["priceGold"]:
                 # Boo more expensive
                 logging.info(f'Boooo! {product["name"]} was £{product["price"]:0.2f} now £{price_base:0.2f}. Member price was £{product["priceGold"]:0.2f} now £{price_member:0.2f}.')
-                discord_message_embed["description"] = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s still a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
-                discord_message_embed["color"] = 10038562
+                discord_message_embed.description = f'❌ Boooo, price increase!\n\nWas £{product["price"]:0.2f} now £{price_base:0.2f}\n\nMember price £{product["priceGold"]:0.2f} now £{price_member:0.2f}\n\nThat\'s still a {current_product["saving"]:0.1f}% saving on RRP ({current_product["savingGold"]:0.1f}% with 🥇)'
+                discord_message_embed.color = 10038562
             
             product["price"] = current_product["price"]
             product["priceGold"] = current_product["priceGold"]
@@ -268,11 +268,9 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             product["savingGold"] = current_product["savingGold"]
 
         if discord_message_embed:
-            discord_message = {
-                #'content': "Hello there",
-                'embeds': [ discord_message_embed ]
-            }
-            discord.send_discord_message(message=discord_message, webhook_url=webhook_url)
+            discord_message = discord.DiscordMessage(webhook_url=webhook_url)
+            discord_message.add_embed(discord_message_embed.get_embed())
+            discord_message.send_message()
 
     # If any of the product data has changed calculate what the new best value product is, and
     # send a Discord message. Display the top 5 vouchers (exclude any with errors or invalid price)
@@ -291,15 +289,14 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
         discord_message_embed = None
         discord_message = None
 
-        discord_message_embed = {
-            'description': best_value_message,
-            'color': 10181046
-        }
+        discord_message_embed = discord.DiscordMessageEmbed(
+            message = best_value_message,
+            colour = 10181046
+        )
 
-        discord_message = {
-            'embeds': [ discord_message_embed ]
-        }
-        discord.send_discord_message(message=discord_message, webhook_url=webhook_url)
+        discord_message = discord.DiscordMessage(webhook_url=webhook_url)
+        discord_message.add_embed(discord_message_embed.get_embed())
+        discord_message.send_message()
 
     # Save the product data back to the file 'data.json'
     try:
@@ -393,7 +390,7 @@ if __name__ == "__main__":
         sys.exit()
 
     if args.send_discord_queue:
-        discord.send_discord_queue()
+        discord_queue.DiscordQueue().send_queue()
         sys.exit()
 
     args_parser.print_help()
