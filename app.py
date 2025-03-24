@@ -121,7 +121,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
         # Perform some pre-flight error processing before beginning...
         # This product has been disabled, either intentionally or
         # through too many errors, so it will be skipped
-        if product["error"] == -1:
+        if product["error"] == -1 or product["error"] == -2:
             continue
 
         # The error counter for this product has reached the limit
