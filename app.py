@@ -161,7 +161,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
 
         if not req.status_code // 100 == 2:
             logging.error(f'Requests non-200 HTTP response for id {product["id"]}:'
-                   ' {req.status_code}')
+                   f' {req.status_code}')
             continue
 
         # Reset variables to prevent unintended re-use
