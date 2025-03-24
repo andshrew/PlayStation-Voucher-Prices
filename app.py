@@ -1,6 +1,6 @@
 #   MIT License
 
-#   Copyright (c) 2022-2023 andshrew
+#   Copyright (c) 2022-2025 andshrew
 #   https://github.com/andshrew/PlayStation-Voucher-Prices
 
 #   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -138,7 +138,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
             )
             discord_message = discord.DiscordMessage(webhook_url=webhook_error_url)
             discord_message.add_embed(discord_message_embed.get_embed())
-            print(f'[check_psn_vouchers] error limit reached for product for id {product["id"]}:'
+            logging.warning(f'Error limit reached for product for id {product["id"]}:'
                    ' it will remain disabled until the error count is manually reset')
             discord_message.send_message()
             continue
@@ -303,7 +303,7 @@ def check_psn_vouchers(webhook_url="", webhook_error_url=""):
         with open('data.json', "w", encoding="utf-8") as f:
             json.dump(product_data, f, indent=4)
     except OSError as ex:
-        print(f'[check_psn_vouchers] Error saving data.json: {ex.strerror}')
+        logging.error(f'Unable to save data.json: {ex.strerror}')
         return False
 
 def parse_base64_image_price(img_base64, transparent=False):
@@ -318,7 +318,7 @@ def parse_base64_image_price(img_base64, transparent=False):
     if transparent:
         img = cv2.imdecode(img_numpy, cv2.IMREAD_UNCHANGED)
         if img.shape[2] != 4:
-            logging.warn(f'Transparent is set but image has no alpha channel')
+            logging.warning(f'Transparent is set but image has no alpha channel')
 
         # Set all RGB values to black without altering alpha (transparency) channel
         img[:,:,:3] = [0, 0, 0]
